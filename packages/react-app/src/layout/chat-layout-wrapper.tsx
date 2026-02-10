@@ -8,10 +8,11 @@ import {
 } from '@dify-chat/core'
 import { useIsMobile } from '@dify-chat/helpers'
 import { useMount, useRequest } from 'ahooks'
-import { Dropdown, Empty, message } from 'antd'
+import { Button, Dropdown, Empty, message, Result, Spin } from 'antd'
 import { useHistory, useParams } from 'pure-react-router'
 import { useEffect, useState } from 'react'
 import { flushSync } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 
 import { DebugMode, LucideIcon } from '@/components'
 import { isDebugMode } from '@/components/debug-mode'
@@ -21,7 +22,6 @@ import { useGlobalStore } from '@/store'
 import { createDifyApiInstance, DifyApi } from '@/utils/dify-api'
 
 import MainLayout from './main-layout'
-import { useTranslation } from 'react-i18next'
 
 const ChatLayoutInner = (props: { appList: IDifyAppItem[] }) => {
 	const { currentAppId, setCurrentAppId, currentApp, setCurrentApp } = useAppContext()
@@ -181,11 +181,13 @@ const ChatLayoutWrapper = () => {
 
 	const { appId } = useParams<{ appId: string }>()
 	const [currentApp, setCurrentApp] = useState<ICurrentApp>()
+	const [error, setError] = useState<Error | null>(null)
 
 	const { runAsync: getAppList } = useRequest(
 		() => {
 			console.log('获取应用列表？')
 			setInitLoading(true)
+			setError(null)
 			return appService.getApps()
 		},
 		{
@@ -209,7 +211,7 @@ const ChatLayoutWrapper = () => {
 				}
 			},
 			onError: error => {
-				message.error(`获取应用列表失败: ${error}`)
+				setError(error)
 				console.error(error)
 			},
 			onFinally: () => {
@@ -222,24 +224,30 @@ const ChatLayoutWrapper = () => {
 	 * 初始化应用信息
 	 */
 	const initApp = async (appId: string) => {
-		const appItem = await appService.getAppByID(appId)
-		if (!appItem) {
-			setAppExists(false)
-			return
+		try {
+			setError(null)
+			const appItem = await appService.getAppByID(appId)
+			if (!appItem) {
+				setAppExists(false)
+				return
+			}
+			const newOptions = isDebugMode()
+				? {
+						user: userId,
+						...appItem.requestConfig,
+					}
+				: {
+						user: userId,
+						...appItem.requestConfig,
+						apiBase: `/${appId}`,
+					}
+			setDifyApi(null)
+			setDifyApi(createDifyApiInstance(newOptions) as DifyApi)
+			setAppExists(true)
+		} catch (err) {
+			console.error(err)
+			setError(err as Error)
 		}
-		const newOptions = isDebugMode()
-			? {
-					user: userId,
-					...appItem.requestConfig,
-				}
-			: {
-					user: userId,
-					...appItem.requestConfig,
-					apiBase: `/${appId}`,
-				}
-		setDifyApi(null)
-		setDifyApi(createDifyApiInstance(newOptions) as DifyApi)
-		setAppExists(true)
 	}
 
 	useEffect(() => {
@@ -254,6 +262,37 @@ const ChatLayoutWrapper = () => {
 	useMount(() => {
 		getAppList()
 	})
+
+	if (error) {
+		return (
+			<div className="flex h-screen w-screen items-center justify-center">
+				<Result
+					status="500"
+					title="加载失败"
+					subTitle={error.message || '初始化应用失败，请稍后重试'}
+					extra={
+						<Button
+							type="primary"
+							onClick={() => window.location.reload()}
+						>
+							刷新页面
+						</Button>
+					}
+				/>
+			</div>
+		)
+	}
+
+	if (initLoading || (!difyApi && appExists)) {
+		return (
+			<div className="flex h-screen w-screen items-center justify-center">
+				<Spin
+					size="large"
+					tip="应用加载中..."
+				/>
+			</div>
+		)
+	}
 
 	if (!difyApi) {
 		return null
