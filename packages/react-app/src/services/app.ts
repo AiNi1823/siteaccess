@@ -62,7 +62,7 @@ class AppService implements IAppStorageAdapter {
 		}
 
 		const appList = await this.getApps()
-		return Promise.resolve(appList.find(item => item.id === id) as IDifyAppItem)
+		return Promise.resolve(appList?.find(item => item.id === id) as IDifyAppItem)
 	}
 }
 

@@ -1,5 +1,4 @@
-import { IAgentThought, IRetrieverResource } from '@dify-chat/api'
-import { IWorkflowNode } from '@dify-chat/api'
+import { IAgentThought, IRetrieverResource, IWorkflowNode } from '@dify-chat/api'
 
 /**
  * 消息对象中的文件 item
@@ -16,6 +15,8 @@ export interface IMessageFileItem {
 }
 
 export interface IAgentMessage {
+	id?: string
+	taskId?: string
 	/**
 	 * 工作流信息
 	 */
@@ -41,6 +42,10 @@ export interface IAgentMessage {
 	 * 输入变量
 	 */
 	inputs?: Record<string, unknown>
+	/**
+	 * 角色
+	 */
+	role?: string
 	/**
 	 * Agent 思维链信息
 	 */

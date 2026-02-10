@@ -1,4 +1,4 @@
-import { IFile, IMessageFileItem, MessageFileBelongsToEnum } from '@dify-chat/api'
+import { IFile, MessageFileBelongsToEnum } from '@dify-chat/api'
 import { IMessageItem4Render } from '@dify-chat/api'
 import { useAppContext } from '@dify-chat/core'
 import { Roles, useConversationsContext } from '@dify-chat/core'
@@ -12,6 +12,7 @@ import { useLatest } from '@/hooks/use-latest'
 import { useX } from '@/hooks/useX'
 import workflowDataStorage from '@/hooks/useX/workflow-data-storage'
 import { useGlobalStore } from '@/store'
+import { IAgentMessage } from '@/types'
 
 interface IChatboxWrapperProps {
 	/**
@@ -52,12 +53,6 @@ export default function ChatboxWrapper(props: IChatboxWrapperProps) {
 	const { currentAppId, currentApp, appLoading } = useAppContext()
 
 	const [entryForm] = Form.useForm()
-	const abortRef = useRef(() => {})
-	useEffect(() => {
-		return () => {
-			abortRef.current()
-		}
-	}, [])
 	// 是否允许消息列表请求时展示 loading
 	const [messagesloadingEnabled, setMessagesloadingEnabled] = useState(true)
 	const [initLoading, setInitLoading] = useState<boolean>(false)
@@ -144,7 +139,7 @@ export default function ChatboxWrapper(props: IChatboxWrapperProps) {
 				updateConversationInputs(result.data[0]?.inputs || {})
 			}
 
-			result.data.forEach(item => {
+			for (const item of result.data) {
 				const createdAt = dayjs(item.created_at * 1000).format('YYYY-MM-DD HH:mm:ss')
 				newMessages.push(
 					{
@@ -168,20 +163,19 @@ export default function ChatboxWrapper(props: IChatboxWrapperProps) {
 							return item.belongs_to === MessageFileBelongsToEnum.assistant
 						}),
 						feedback: item.feedback,
-						workflows:
-							workflowDataStorage.get({
-								appId: currentAppId || '',
-								conversationId,
-								messageId: item.id,
-								key: 'workflows',
-							}) || [],
+						workflows: (await workflowDataStorage.get({
+							appId: currentAppId || '',
+							conversationId,
+							messageId: item.id,
+							key: 'workflows',
+						})) as IAgentMessage['workflows'],
 						agentThoughts: item.agent_thoughts || [],
 						retrieverResources: item.retriever_resources || [],
 						role: Roles.AI,
 						created_at: createdAt,
 					},
 				)
-			})
+			}
 
 			// 替换历史消息
 			setHistoryMessages(newMessages)
@@ -225,7 +219,7 @@ export default function ChatboxWrapper(props: IChatboxWrapperProps) {
 
 			const newMessages: IMessageItem4Render[] = []
 
-			result.data.forEach(item => {
+			for (const item of result.data) {
 				const createdAt = dayjs(item.created_at * 1000).format('YYYY-MM-DD HH:mm:ss')
 				newMessages.push(
 					{
@@ -249,20 +243,19 @@ export default function ChatboxWrapper(props: IChatboxWrapperProps) {
 							return item.belongs_to === MessageFileBelongsToEnum.assistant
 						}),
 						feedback: item.feedback,
-						workflows:
-							workflowDataStorage.get({
-								appId: currentAppId || '',
-								conversationId,
-								messageId: item.id,
-								key: 'workflows',
-							}) || [],
+						workflows: (await workflowDataStorage.get({
+							appId: currentAppId || '',
+							conversationId,
+							messageId: item.id,
+							key: 'workflows',
+						})) as IAgentMessage['workflows'],
 						agentThoughts: item.agent_thoughts || [],
 						retrieverResources: item.retriever_resources || [],
 						role: Roles.AI,
 						created_at: createdAt,
 					},
 				)
-			})
+			}
 
 			// 追加到历史消息前面
 			setHistoryMessages(prev => [...newMessages, ...prev])
@@ -270,19 +263,21 @@ export default function ChatboxWrapper(props: IChatboxWrapperProps) {
 		[difyApi, historyMessages, currentConversationId],
 	)
 
-	const { agent, onRequest, messages, setMessages, currentTaskId } = useX({
+	const [currentTaskId, setCurrentTaskId] = useState('')
+
+	const { abort, isRequesting, onRequest, messages, setMessages } = useX({
 		latestProps,
 		filesRef,
-		getNextSuggestions,
-		abortRef,
-		getConversationMessages: (conversationId: string) =>
-			initConversationMessages(conversationId, false),
 		onConversationIdChange: id => {
 			setMessagesloadingEnabled(false)
 			setCurrentConversationId(id)
 			conversationItemsChangeCallback()
 		},
 		entryForm,
+		onTaskIdChange: (newTaskId: string) => {
+			setCurrentTaskId(newTaskId)
+		},
+		getNextSuggestions,
 	})
 
 	const initConversationInfo = async () => {
@@ -321,7 +316,8 @@ export default function ChatboxWrapper(props: IChatboxWrapperProps) {
 
 	const onPromptsItemClick = (content: string) => {
 		onRequest({
-			content,
+			query: content,
+			conversation_id: currentConversationId,
 		})
 	}
 
@@ -335,16 +331,17 @@ export default function ChatboxWrapper(props: IChatboxWrapperProps) {
 		})
 	}, [currentApp?.parameters, currentConversationInfo])
 
-	const onSubmit = useCallback(
-		(nextContent: string, options?: { files?: IFile[]; inputs?: Record<string, unknown> }) => {
-			filesRef.current = options?.files || []
-			onRequest({
-				content: nextContent,
-				files: options?.files as IMessageFileItem[],
-			})
-		},
-		[onRequest],
-	)
+	const onSubmit = (
+		nextContent: string,
+		options?: { files?: IFile[]; inputs?: Record<string, unknown> },
+	) => {
+		filesRef.current = options?.files || []
+		onRequest({
+			query: nextContent,
+			files: options?.files || [],
+			conversation_id: currentConversationId,
+		})
+	}
 
 	const unStoredMessages4Render = useMemo(() => {
 		return messages.map(item => {
@@ -352,12 +349,12 @@ export default function ChatboxWrapper(props: IChatboxWrapperProps) {
 				id: item.id,
 				status: item.status,
 				// @ts-expect-error TODO: 类型待优化
-				error: item.message.error || '',
-				workflows: item.message.workflows,
-				agentThoughts: item.message.agentThoughts,
-				retrieverResources: item.message.retrieverResources,
-				files: item.message.files,
-				content: item.message.content,
+				error: item.message?.error || '',
+				workflows: item.message?.workflows,
+				agentThoughts: item.message?.agentThoughts,
+				retrieverResources: item.message?.retrieverResources,
+				files: item.message?.files,
+				content: item.message?.content,
 				role: item.status === Roles.LOCAL ? Roles.USER : Roles.AI,
 			} as IMessageItem4Render
 		})
@@ -413,14 +410,14 @@ export default function ChatboxWrapper(props: IChatboxWrapperProps) {
 						conversationId={currentConversationId!}
 						nextSuggestions={nextSuggestions}
 						messageItems={messageItems}
-						isRequesting={agent.isRequesting()}
+						isRequesting={isRequesting}
 						onPromptsItemClick={(...params) => {
 							setNextSuggestions([])
 							return onPromptsItemClick(...params)
 						}}
 						onSubmit={onSubmit}
 						onCancel={async () => {
-							abortRef.current()
+							abort()
 							if (currentTaskId) {
 								await difyApi!.stopTask(currentTaskId)
 								initConversationMessages(currentConversationId!, false)

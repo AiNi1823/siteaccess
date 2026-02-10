@@ -1,5 +1,8 @@
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
 // 定义获取和设置数据时 options 的统一类型
-type IWorkflowDataOptions = {
+export type IWorkflowDataOptions = {
 	appId: string
 	conversationId: string
 	messageId: string
@@ -7,40 +10,85 @@ type IWorkflowDataOptions = {
 }
 
 // 定义设置数据时 options 的类型，继承自 IWorkflowDataOptions
-type IWorkflowDataSetOptions = IWorkflowDataOptions & {
+export type IWorkflowDataSetOptions = IWorkflowDataOptions & {
 	value: unknown
 }
 
+interface WorkflowStore {
+	data: Record<string, unknown>
+	setData: (id: string, value: unknown) => void
+	getData: (id: string) => unknown
+	getAllData: () => { id: string; value: unknown }[]
+}
+
+const useWorkflowStore = create<WorkflowStore>()(
+	persist(
+		(set, get) => ({
+			data: {},
+			setData: (id, value) => {
+				set(state => ({
+					data: {
+						...state.data,
+						[id]: value,
+					},
+				}))
+			},
+			getData: id => {
+				return get().data[id]
+			},
+			getAllData: () => {
+				const data = get().data
+				return Object.entries(data).map(([id, value]) => ({ id, value }))
+			},
+		}),
+		{
+			name: 'workflow-data-storage',
+		},
+	),
+)
+
 /**
- * 工作流数据存储，以 应用=>对话=>消息 为维度存储数据
+ * 工作流数据存储，结合 zustand 状态管理和持久化
+ * 优点：
+ * 1. 内存读取，响应极快，适合流式输出的高频读写
+ * 2. 自动持久化，刷新页面后依然可以获取
+ * 3. 简化异步处理
  */
 class WorkflowDataStorage {
 	/**
-	 * 存储数据
+	 * 生成存储键
 	 */
-	private data: Record<string, Record<string, Record<string, Record<string, unknown>>>> = {}
+	private generateId(options: IWorkflowDataOptions): string {
+		const { appId, conversationId, messageId, key } = options
+		return `${appId}_${conversationId}_${messageId}_${key}`
+	}
 
 	/**
 	 * 获取数据
 	 * @param options 包含应用 ID、对话 ID、消息 ID 和数据键的对象
 	 * @returns 数据
 	 */
-	get(options: IWorkflowDataOptions) {
-		const { appId, conversationId, messageId, key } = options
-		return this.data[appId]?.[conversationId]?.[messageId]?.[key]
+	async get(options: IWorkflowDataOptions): Promise<unknown> {
+		const id = this.generateId(options)
+		return useWorkflowStore.getState().getData(id)
 	}
 
 	/**
 	 * 设置数据
 	 * @param options 包含应用 ID、对话 ID、消息 ID、数据键和数据值的对象
 	 */
-	set(options: IWorkflowDataSetOptions) {
-		const { appId, conversationId, messageId, key, value } = options
-		if (!this.data[appId]) this.data[appId] = {}
-		if (!this.data[appId][conversationId]) this.data[appId][conversationId] = {}
-		if (!this.data[appId][conversationId][messageId])
-			this.data[appId][conversationId][messageId] = {}
-		this.data[appId][conversationId][messageId][key] = value
+	async set(options: IWorkflowDataSetOptions): Promise<void> {
+		const { value } = options
+		const id = this.generateId(options)
+		useWorkflowStore.getState().setData(id, value)
+	}
+
+	/**
+	 * 获取所有缓存的数据
+	 * @returns 包含所有缓存数据的数组
+	 */
+	async listAll(): Promise<{ id: string; value: unknown }[]> {
+		return useWorkflowStore.getState().getAllData()
 	}
 }
 

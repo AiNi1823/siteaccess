@@ -1,5 +1,5 @@
 import { CopyOutlined } from '@ant-design/icons'
-import { XStream } from '@ant-design/x'
+import { XStream } from '@ant-design/x-sdk'
 import {
 	EventEnum,
 	IAgentMessage,

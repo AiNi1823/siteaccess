@@ -34,8 +34,14 @@
 
 .ant-collapse {
 	.ant-collapse-item {
+		border-bottom: none;
+
 		.ant-collapse-header-text {
 			color: var(--theme-text-color);
+		}
+
+		.ant-collapse-panel {
+			border: 0;
 		}
 	}
 	.ant-collapse-expand-icon {
@@ -61,7 +67,7 @@
 			}
 		}
 
-		&[role='user'] {
+		&.ant-bubble-end {
 			.ant-bubble-content {
 				padding-left: 10px;
 				padding-right: 10px;

@@ -53,7 +53,7 @@ export default function MessageContent(props: IMessageContentProps) {
 	const { currentApp } = useAppContext()
 
 	const computedContent = useMemo(() => {
-		const likelyJSON = content.startsWith('{') && content.endsWith('}')
+		const likelyJSON = content?.startsWith('{') && content?.endsWith('}')
 		// 处理回复表单的自动生成消息
 		if (role === Roles.LOCAL || (role === Roles.USER && likelyJSON)) {
 			if (currentApp?.config.answerForm?.enabled && currentApp.config.answerForm?.feedbackText) {

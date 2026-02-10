@@ -125,7 +125,7 @@ export const Chatbox = (props: ChatboxProps) => {
 		}
 	}
 
-	const roles: GetProp<typeof Bubble.List, 'roles'> = {
+	const roles: GetProp<typeof Bubble.List, 'role'> = {
 		ai: {
 			placement: 'start',
 		},
@@ -148,7 +148,7 @@ export const Chatbox = (props: ChatboxProps) => {
 				// 不要开启 loading 和 typing, 否则流式会无效
 				// loading: status === 'loading',
 				content: messageItem.content,
-				messageRender: () => {
+				contentRender: () => {
 					return (
 						<MessageContent
 							onSubmit={onSubmit}
@@ -205,7 +205,7 @@ export const Chatbox = (props: ChatboxProps) => {
 					</div>
 				),
 			}
-		}) as GetProp<typeof Bubble.List, 'items'>
+		}) satisfies GetProp<typeof Bubble.List, 'items'>
 	}, [
 		messageItems,
 		conversationId,
@@ -295,7 +295,7 @@ export const Chatbox = (props: ChatboxProps) => {
 							{/* 🌟 消息列表 */}
 							<Bubble.List
 								items={items}
-								roles={roles}
+								role={roles}
 							/>
 
 							{/* 下一步问题建议 当存在消息列表，且非正在对话时才展示 */}

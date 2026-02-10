@@ -11,7 +11,6 @@ const tsconfigProdPath = path.resolve(__dirname, './tsconfig.prod.json')
 export default defineConfig({
 	source: {
 		tsconfigPath: process.env.NODE_ENV === 'development' ? tsconfigDevPath : tsconfigProdPath,
-		include: [{ not: /[\\/]core-js[\\/]/ }],
 		// 把 .env 中的变量注入到 process.env，供前端代码读取
 		define: {
 			'process.env.PUBLIC_DEBUG_MODE': JSON.stringify(process.env.PUBLIC_DEBUG_MODE ?? ''),

@@ -12,7 +12,8 @@
 	"dependencies": {
 		"@ant-design/cssinjs": "catalog:",
 		"@ant-design/icons": "catalog:",
-		"@ant-design/x": "catalog:",
+		"@ant-design/x": "^2.2.1",
+		"@ant-design/x-sdk": "^2.2.1",
 		"@dify-chat/api": "workspace:^",
 		"@dify-chat/components": "workspace:^",
 		"@dify-chat/core": "workspace:^",

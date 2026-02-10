@@ -24,16 +24,13 @@ export default function WorkflowLogs(props: IWorkflowLogsProps) {
 	const { currentApp } = useAppContext()
 
 	// Collapse 组件的通用 props
-	const collapseCommonProps: Pick<CollapseProps, 'expandIconPosition'> = useMemo(() => {
-		if (currentApp?.site?.show_workflow_steps) {
-			return {
-				expandIconPosition: 'end',
-			}
-		}
-		return {
-			expandIconPosition: 'end',
-		}
-	}, [currentApp?.site?.show_workflow_steps])
+	const collapseCommonProps: Pick<CollapseProps, 'expandIconPlacement' | 'classNames'> = {
+		expandIconPlacement: 'end',
+		classNames: {
+			root: 'border-none',
+			body: 'border border-solid border-[#eff0f5] border-t-0 rounded-b-lg',
+		},
+	}
 
 	// Collapse 组件的 item 通用 props
 	const collapseItemVisibleProps: Pick<
@@ -74,7 +71,7 @@ export default function WorkflowLogs(props: IWorkflowLogsProps) {
 			children: (
 				<Collapse
 					size="small"
-					expandIconPosition={collapseCommonProps.expandIconPosition}
+					{...collapseCommonProps}
 					items={items.map(item => {
 						const totalTokens = item.execution_metadata?.total_tokens
 						return {
@@ -110,6 +107,7 @@ export default function WorkflowLogs(props: IWorkflowLogsProps) {
 							...collapseItemVisibleProps,
 							children: (
 								<Collapse
+									{...collapseCommonProps}
 									size="small"
 									items={[
 										{
@@ -142,10 +140,10 @@ export default function WorkflowLogs(props: IWorkflowLogsProps) {
 	return (
 		<div className={`mb-3 md:min-w-chat-card ${className || ''}`}>
 			<Collapse
+				{...collapseCommonProps}
 				items={collapseItems}
 				size="small"
 				className="!bg-theme-bg"
-				expandIconPosition={collapseCommonProps.expandIconPosition}
 			/>
 		</div>
 	)
