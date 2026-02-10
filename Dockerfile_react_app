@@ -1,43 +1,11 @@
 # ================================
-# 阶段 1: 基础环境和依赖安装、构建
+# 阶段 1: 构建 React 应用
 # ================================
-FROM node:22.21.1-alpine AS builder
+ARG BASE_IMAGE=dify-chat-base
+FROM ${BASE_IMAGE} AS builder
 
 # 设置工作目录
 WORKDIR /app
-
-# 安装 pnpm
-RUN npm install -g pnpm@10.8.1
-
-# 复制 package.json 和 pnpm 配置文件（优化缓存层）
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-
-# 复制所有子包的 package.json 文件（用于依赖安装）
-COPY packages/api/package.json ./packages/api/
-COPY packages/components/package.json ./packages/components/
-COPY packages/core/package.json ./packages/core/
-COPY packages/helpers/package.json ./packages/helpers/
-COPY packages/theme/package.json ./packages/theme/
-COPY packages/react-app/package.json ./packages/react-app/
-
-# 安装所有依赖
-RUN pnpm install
-
-# 复制子包源码（除了 react-app）
-COPY packages/api ./packages/api
-COPY packages/components ./packages/components
-COPY packages/core ./packages/core
-COPY packages/helpers ./packages/helpers
-COPY packages/theme ./packages/theme
-# components 子包有依赖到 react-app 的 tailwind.config.ts，后续优化
-COPY packages/react-app ./packages/react-app
-
-# 复制构建配置文件
-COPY tsconfig.prod.json ./
-COPY packages/*/tsconfig.json ./packages/*/
-
-# 构建所有子包
-RUN pnpm build:pkgs
 
 # 设置环境变量（可在构建时通过 --build-arg 传入）
 ARG PUBLIC_DEBUG_MODE=false
@@ -47,6 +15,9 @@ ARG PUBLIC_DIFY_PROXY_API_BASE=http://localhost:5300/api/client/dify
 ENV PUBLIC_DEBUG_MODE=${PUBLIC_DEBUG_MODE}
 ENV PUBLIC_APP_API_BASE=${PUBLIC_APP_API_BASE}
 ENV PUBLIC_DIFY_PROXY_API_BASE=${PUBLIC_DIFY_PROXY_API_BASE}
+
+# 确保使用最新的 react-app 源码
+COPY packages/react-app ./packages/react-app
 
 # 构建 React 应用
 RUN pnpm --filter dify-chat-app-react build
