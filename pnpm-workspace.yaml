@@ -44,7 +44,7 @@ catalog:
   '@storybook/blocks': ^8.6.12
   '@storybook/react': ^8.6.12
   '@storybook/test': ^8.6.12
-  '@svgdotjs/svg.js': ^3.2.4
+  '@svgdotjs/svg.js': ^3.2.5
   '@tailwindcss/postcss': ^4
   '@testing-library/jest-dom': ^6.6.3
   '@testing-library/react': ^16.3.0
