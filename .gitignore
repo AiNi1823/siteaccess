@@ -24,3 +24,6 @@ dist/
 
 packages/server/apps.json
 .dify-chat
+
+# Claude Code 临时文件
+.claude/
